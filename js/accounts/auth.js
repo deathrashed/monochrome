@@ -56,7 +56,7 @@ export class AuthManager {
             );
         } catch (error) {
             console.error('Login failed:', error);
-            alert(`Login failed: ${error.message}`);
+            showAlert(`Email Login failed: ${error.message}`);
         }
     }
 
@@ -69,7 +69,7 @@ export class AuthManager {
             );
         } catch (error) {
             console.error('Login failed:', error);
-            alert(`Login failed: ${error.message}`);
+            showAlert(`Login failed: ${error.message}`);
         }
     }
 
@@ -82,7 +82,7 @@ export class AuthManager {
             );
         } catch (error) {
             console.error('Login failed:', error);
-            alert(`Login failed: ${error.message}`);
+            showAlert(`Login failed: ${error.message}`);
         }
     }
 
@@ -95,7 +95,7 @@ export class AuthManager {
             );
         } catch (error) {
             console.error('Login failed:', error);
-            alert(`Login failed: ${error.message}`);
+            showAlert(`Login failed: ${error.message}`);
         }
     }
 
@@ -108,7 +108,7 @@ export class AuthManager {
             return this.user;
         } catch (error) {
             console.error('Email Login failed:', error);
-            alert(`Login failed: ${error.message}`);
+            showAlert(`Login failed: ${error.message}`);
             throw error;
         }
     }
@@ -123,7 +123,7 @@ export class AuthManager {
             return this.user;
         } catch (error) {
             console.error('Sign Up failed:', error);
-            alert(`Sign Up failed: ${error.message}`);
+            showAlert(`Sign Up failed: ${error.message}`);
             throw error;
         }
     }
@@ -131,7 +131,7 @@ export class AuthManager {
     async sendPasswordReset(email) {
         try {
             await auth.createRecovery(email, window.location.origin + '/reset-password');
-            alert(`Password reset email sent to ${email}`);
+            showAlert(`Password reset email sent to ${email}`);
         } catch (error) {
             console.error('Password reset failed:', error);
             alert(`Failed to send reset email: ${error.message}`);

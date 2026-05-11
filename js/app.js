@@ -57,6 +57,11 @@ import {
     SVG_RESET,
 } from './icons.js';
 import { HiFiClient } from './HiFi.js';
+import { showAlert, showConfirm, showPrompt } from './ios-modal.js';
+
+if (isIos) {
+    document.documentElement.classList.add('ios-native');
+}
 
 // Capture real iOS state before spoofing (needed for background audio)
 if (typeof window !== 'undefined') {
@@ -175,15 +180,15 @@ function initializeCasting(audioPlayer, castBtn) {
                 }
             });
 
-        castBtn.addEventListener('click', () => {
+        castBtn.addEventListener('click', async () => {
             if (!audioPlayer.src) {
-                alert('Please play a track first to enable casting.');
+                await showAlert('Please play a track first to enable casting.');
                 return;
             }
-            audioPlayer.remote.prompt().catch((err) => {
+            audioPlayer.remote.prompt().catch(async (err) => {
                 if (err.name === 'NotAllowedError') return;
                 if (err.name === 'NotFoundError') {
-                    alert('No remote playback devices (Chromecast/AirPlay) were found on your network.');
+                    await showAlert('No remote playback devices (Chromecast/AirPlay) were found on your network.');
                     return;
                 }
                 console.log('Cast prompt error:', err);
@@ -224,8 +229,10 @@ function initializeCasting(audioPlayer, castBtn) {
         });
     } else if (window.innerWidth > 768) {
         castBtn.style.display = 'flex';
-        castBtn.addEventListener('click', () => {
-            alert('Casting is not supported in this browser. Try Chrome for Chromecast or Safari for AirPlay.');
+        castBtn.addEventListener('click', async () => {
+            await showAlert(
+                'Casting is not supported in this browser. Try Chrome for Chromecast or Safari for AirPlay.'
+            );
         });
     }
 }
@@ -430,8 +437,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
-    // Haptic feedback on every click
-    document.addEventListener('click', () => hapticLight(), { capture: true });
+    // Haptic feedback on interactive controls only (not every tap)
+    document.addEventListener(
+        'click',
+        (e) => {
+            if (e.target.closest('button, a, [role="button"], .track-item, .card')) {
+                hapticLight();
+            }
+        },
+        { capture: true }
+    );
 
     // Initialize analytics
     initAnalytics();
@@ -591,13 +606,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    // Kick off a background scan of the saved local media folder on startup so
-    // that the Library > Local tab is populated without requiring the user to
-    // manually press "Load [folder]" every session.  The function internally
-    // checks for a saved handle and (in browser mode) requests read permission,
-    // so this is a silent no-op when no folder is configured or permission is not
-    // yet granted.
-    scanLocalMediaFolder().catch(console.error);
+    // Kick off a background scan of the saved local media folder on startup.
+    // Local file playback is not available on iOS so skip this entirely there.
+    if (!isIos) {
+        scanLocalMediaFolder().catch(console.error);
+    }
 
     const scrobbler = new MultiScrobbler();
     window.monochromeScrobbler = scrobbler;
@@ -610,13 +623,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const browserWarning = document.getElementById('local-browser-warning');
 
     if (selectLocalBtn && browserWarning) {
-        const ua = navigator.userAgent;
-        const isChromeOrEdge = (ua.indexOf('Chrome') > -1 || ua.indexOf('Edg') > -1) && !/Mobile|Android/.test(ua);
-        const hasFileSystemApi = 'showDirectoryPicker' in window;
-
-        if (!isChromeOrEdge || !hasFileSystemApi) {
+        if (isIos) {
             selectLocalBtn.style.display = 'none';
+            browserWarning.textContent = 'Local file playback is unavailable on this build.';
             browserWarning.style.display = 'block';
+        } else {
+            const ua = navigator.userAgent;
+            const isChromeOrEdge = (ua.indexOf('Chrome') > -1 || ua.indexOf('Edg') > -1) && !/Mobile|Android/.test(ua);
+            const hasFileSystemApi = 'showDirectoryPicker' in window;
+
+            if (!isChromeOrEdge || !hasFileSystemApi) {
+                selectLocalBtn.style.display = 'none';
+                browserWarning.style.display = 'block';
+            }
         }
     }
 
@@ -656,7 +675,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         scrobbler
     );
     initializeUIInteractions(Player.instance, MusicAPI.instance, UIRenderer.instance);
-    initializeKeyboardShortcuts(Player.instance, audioPlayer);
+    // Keyboard shortcuts are pointless on a touchscreen – skip on iOS
+    if (!isIos) {
+        initializeKeyboardShortcuts(Player.instance, audioPlayer);
+    }
 
     // Restore UI state for the current track (like button, theme)
     if (Player.instance.currentTrack) {
@@ -667,7 +689,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!e.target.closest('.cover')) return;
 
         if (!Player.instance.currentTrack) {
-            alert('No track is currently playing');
+            await showAlert('No track is currently playing');
             return;
         }
 
@@ -912,7 +934,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Validate file type
         if (!file.type.startsWith('image/')) {
-            alert('Please select an image file');
+            await showAlert('Please select an image file');
             return;
         }
 
@@ -967,7 +989,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('toggle-lyrics-btn')?.addEventListener('click', async (e) => {
         e.stopPropagation();
         if (!Player.instance.currentTrack) {
-            alert('No track is currently playing');
+            await showAlert('No track is currently playing');
             return;
         }
 
@@ -1465,7 +1487,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const workerUrl = `https://ytmimport.samidy.workers.dev?playlistId=${playlistId}`;
 
                         if (!playlistId) {
-                            alert("Invalid URL. Make sure it has 'list=' in it.");
+                            await showAlert("Invalid URL. Make sure it has 'list=' in it.");
                             return;
                         }
 
@@ -2770,17 +2792,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!user) {
                 const iconBtnStyle =
                     'background:none;border:none;cursor:pointer;padding:4px;border-radius:6px;display:flex;align-items:center;transition:opacity 0.15s';
-                headerAccountDropdown.innerHTML = `
-                    <span style="font-size:0.75rem;color:var(--muted-foreground);padding:0.25rem 0.5rem">Connect with</span>
-                    <div style="display:flex;gap:0.5rem;padding:0.25rem 0.5rem;align-items:center">
-                        <button id="header-discord-auth" title="Discord" style="${iconBtnStyle}">${discordSvg}</button>
-                        <button id="header-google-auth" title="Google" style="${iconBtnStyle}">${googleSvg}</button>
-                        <button id="header-github-auth" title="GitHub" style="${iconBtnStyle}">${githubSvg}</button>
-                        <button id="header-spotify-auth" title="Spotify" style="${iconBtnStyle}">${spotifySvg}</button>
-                    </div>
-                    <hr style="border:none;border-top:1px solid var(--border);margin:0.25rem 0">
-                    <button class="btn-secondary" id="header-email-auth">Connect with Email</button>
-                `;
+                if (isIos) {
+                    headerAccountDropdown.innerHTML = `
+                        <span style="font-size:0.75rem;color:var(--muted-foreground);padding:0.25rem 0.5rem">
+                            OAuth is unavailable here; use email or restore settings.
+                        </span>
+                        <button class="btn-secondary" id="header-email-auth">Connect with Email</button>
+                    `;
+                } else {
+                    headerAccountDropdown.innerHTML = `
+                        <span style="font-size:0.75rem;color:var(--muted-foreground);padding:0.25rem 0.5rem">Connect with</span>
+                        <div style="display:flex;gap:0.5rem;padding:0.25rem 0.5rem;align-items:center">
+                            <button id="header-discord-auth" title="Discord" style="${iconBtnStyle}">${discordSvg}</button>
+                            <button id="header-google-auth" title="Google" style="${iconBtnStyle}">${googleSvg}</button>
+                            <button id="header-github-auth" title="GitHub" style="${iconBtnStyle}">${githubSvg}</button>
+                            <button id="header-spotify-auth" title="Spotify" style="${iconBtnStyle}">${spotifySvg}</button>
+                        </div>
+                        <hr style="border:none;border-top:1px solid var(--border);margin:0.25rem 0">
+                        <button class="btn-secondary" id="header-email-auth">Connect with Email</button>
+                    `;
+                }
 
                 for (const id of [
                     'header-discord-auth',

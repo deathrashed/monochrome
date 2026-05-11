@@ -14,7 +14,9 @@ import { ffmpegInfo, ffmpegNewContainer, ffmpeg } from './ffmpeg';
 /**
  * Triggers a browser file download for the given blob.
  */
-export function triggerDownload(blob: Blob, filename: string): void {
+import { isIos } from './platform-detection.js';
+
+function fallbackDownload(blob: Blob, filename: string) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -23,6 +25,34 @@ export function triggerDownload(blob: Blob, filename: string): void {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+}
+
+export async function triggerDownload(blob: Blob, filename: string, trackUrl?: string): Promise<boolean> {
+    if (isIos) {
+        // Parse track type and ID from filename to find the right web URL
+        // Filename format: "Artist - Title.mp3" - but we need the URL
+        const isCapacitor = window.location.protocol === 'capacitor:';
+        let webUrl = 'https://monochrome.rip';
+
+        // If we have a track URL (e.g., from track download context), use it
+        if (trackUrl) {
+            webUrl = trackUrl;
+        } else if (isCapacitor) {
+            // Try to construct from window location if we're on a track/album page
+            const path = window.location.pathname;
+            if (path.includes('/track/') || path.includes('/album/')) {
+                webUrl = `https://monochrome.tf${path}`;
+            }
+        }
+
+        window.open(webUrl, '_blank');
+        alert(
+            `Downloads work better in the web version.\n\nOpened ${webUrl.replace('https://', '')} - find the track and download from there.\n\nTip: Tap Share > Add to Home Screen for easy access.`
+        );
+        return false;
+    }
+    fallbackDownload(blob, filename);
+    return true;
 }
 
 /**

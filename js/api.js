@@ -2238,7 +2238,22 @@ export class LosslessAPI {
                     finalFilename = filename.replace(/\.[^.]+$/, `.${detectedExtension}`);
                 }
 
-                triggerDownload(blob, finalFilename);
+                // Build track URL for iOS to open correct page
+                let trackUrl = undefined;
+                const { isIos } = await import('./platform-detection.js');
+                if (isIos) {
+                    const albumId = enrichedTrack.album?.id;
+                    const trackId = enrichedTrack.id;
+                    if (trackId) {
+                        trackUrl = albumId ? `https://monochrome.tf/track/${trackId}` : undefined;
+                    }
+                }
+
+                const success = await triggerDownload(blob, finalFilename, trackUrl);
+
+                if (isIos && success) {
+                    return blob;
+                }
             }
 
             return blob;

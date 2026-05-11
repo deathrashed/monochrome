@@ -994,13 +994,18 @@ function completeBulkDownload(notifEl, success = true, message = null) {
     if (success) {
         progressFill.style.width = '100%';
         progressFill.style.background = '#10b981';
-        statusEl.textContent = '✓ Download complete';
+        // Check if iOS - share sheet requires user action so message should reflect that
+        const isIOS = navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad');
+        statusEl.textContent = isIOS ? '✓ Opening web version for download' : '✓ Download complete';
         statusEl.style.color = '#10b981';
 
-        setTimeout(() => {
-            notifEl.style.animation = 'slide-out 0.3s ease forwards';
-            setTimeout(() => notifEl.remove(), 300);
-        }, 3000);
+        setTimeout(
+            () => {
+                notifEl.style.animation = 'slide-out 0.3s ease forwards';
+                setTimeout(() => notifEl.remove(), 3000);
+            },
+            isIOS ? 8000 : 3000
+        );
     } else {
         progressFill.style.background = '#ef4444';
         statusEl.textContent = message || '✗ Download failed';
@@ -1008,7 +1013,7 @@ function completeBulkDownload(notifEl, success = true, message = null) {
 
         setTimeout(() => {
             notifEl.style.animation = 'slide-out 0.3s ease forwards';
-            setTimeout(() => notifEl.remove(), 300);
+            setTimeout(() => notifEl.remove(), 5000);
         }, 5000);
     }
 }

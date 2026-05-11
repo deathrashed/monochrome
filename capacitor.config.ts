@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-    appId: 'tf.monochrome.music',
-    appName: 'Monochrome Music',
+    appId: 'com.rd.monochrome',
+    appName: 'Monochrome',
     webDir: 'dist',
     assets: {
         iconBackgroundColor: '#000000',

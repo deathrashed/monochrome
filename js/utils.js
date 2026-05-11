@@ -619,7 +619,16 @@ export function positionMenu(menu, x, y, anchorRect = null) {
 }
 
 export const getShareUrl = (path) => {
-    const baseUrl = window.NL_MODE ? 'https://monochrome.tf' : window.location.origin;
+    const isCapacitor = window.location.protocol === 'capacitor:';
+    // Use the web domain in Capacitor, otherwise use current origin
+    let baseUrl;
+    if (isCapacitor) {
+        baseUrl = 'https://monochrome.tf';
+    } else if (window.NL_MODE) {
+        baseUrl = 'https://monochrome.tf';
+    } else {
+        baseUrl = window.location.origin;
+    }
     const safePath = path.startsWith('/') ? path : `/${path}`;
     return `${baseUrl}${safePath}`;
 };

@@ -739,7 +739,9 @@ export class ListeningPartyManager {
     }
 
     copyInviteLink() {
-        navigator.clipboard.writeText(`${window.location.origin}/party/${this.currentParty.id}`).catch(console.error);
+        const isCapacitor = window.location.protocol === 'capacitor:';
+        const baseUrl = isCapacitor ? 'https://monochrome.tf' : window.location.origin;
+        navigator.clipboard.writeText(`${baseUrl}/party/${this.currentParty.id}`).catch(console.error);
         showNotification('Invite link copied!');
     }
 
